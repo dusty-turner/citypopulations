@@ -31,11 +31,25 @@ ui <- navbarPage("Map Search",
       
       
       # Show a plot of the generated distribution
-      mainPanel(tabsetPanel(
-        tabPanel("Main Panel", plotOutput("showmap"), verbatimTextOutput("cityvalidation"))
-        ))
+      mainPanel(plotOutput("showmap"), verbatimTextOutput("cityvalidation"))
+        
    )),
-tabPanel("Download",downloadButton('downloadData', 'Download'))
+tabPanel("Share",
+         sidebarLayout(
+           sidebarPanel(
+             h5(strong("Download City Information to CSV")),
+             downloadButton('downloadData', 'Download'),
+             textInput("emailaddress", "What is your email address?", "dusty.turner@usma.edu"),
+             actionButton("Submit", "Submit"),
+             textInput("first", "firstname", "dusty"),
+             textInput("last", "lastname", "turner"),
+             actionButton("Sendemail", "Send Email")
+),
+          
+           # Show a plot of the generated distribution
+           mainPanel(tableOutput("emaillist"))
+      ))
+
 )
 
 
@@ -44,13 +58,15 @@ server <- function(input, output) {
 
   # get lat long
   values <- reactiveValues()
-  string = reactiveValues()
-
-  string$df = data.frame(helper = numeric(0))
+  emails = reactiveValues()
+  
+  emails$df = data.frame(emailvector = numeric(0))
   values$df <- data.frame(City = numeric(0), State = numeric(0), pop = numeric(0), lat = numeric(0), long = numeric(0))
 
   newEntry <- observeEvent(input$Search,{
-      cleanedcity = gsub(" ", "", input$city)
+      cleanedcity = gsub(" ", "%20", input$city)
+      cleanedstate = input$state
+      cleanedstate = gsub("(?<=\\b)([a-z])", "\\U\\1", tolower(cleanedstate), perl=TRUE)
       test = paste("http://nominatim.openstreetmap.org/search?city=", cleanedcity,
                    "&countrycodes=US&limit=9&format=json", sep="")
       r <- GET(test)
@@ -60,7 +76,7 @@ server <- function(input, output) {
       state = map_chr(mysearch, "display_name")
       id = map_chr(mysearch, "place_id")
       citydf = data.frame(lat = as.numeric(as.character(lat)), long = as.numeric(as.character(long)), state = state, id = id)
-      thiscity = citydf[grep(input$state, citydf$state), ]
+      thiscity = citydf[grep(cleanedstate, citydf$state), ]
       
       if(is.na(as.numeric(thiscity[1,4]))==FALSE) {
         thiscity = thiscity[1,]
@@ -82,8 +98,10 @@ server <- function(input, output) {
             }
           }
       pop= gsub("\\D","",scrape[i])
-      newLine <- isolate(c(input$city, input$state, pop))
-      isolate(values$df[nrow(values$df) + 1,] <- c(input$city, input$state, pop, lat = lat1, long = long1))
+      # newLine <- isolate(c(input$city, input$state, pop))
+      cleanedcity2 = input$city
+      cleanedcity2 = gsub("(?<=\\b)([a-z])", "\\U\\1", tolower(cleanedcity2), perl=TRUE)
+      isolate(values$df[nrow(values$df) + 1,] <- c(cleanedcity2, cleanedstate, pop, lat = lat1, long = long1))
       # isolate(string$df[1] = c("0"))
         } else { 
       # isolate(string$df="0")
@@ -94,9 +112,9 @@ server <- function(input, output) {
   tablevalues = reactive({
   newdf = values$df 
   newdf = newdf %>% group_by(newdf$lat) %>% filter(row_number() == 1)
-  newdf = arrange(newdf, pop)
   #newdf = newdf[is.factor(newdf$pop),]
-  newdf$Population = as.numeric(as.character(newdf$pop))
+  newdf$Population = as.integer(as.character(newdf$pop))
+  newdf = arrange(newdf, Population)
   return(newdf)
     })
 
@@ -123,9 +141,38 @@ server <- function(input, output) {
     }, height = 700, width = 1000)
     
     output$citytable <- renderTable({
-      tablevalues()[1:3]
+      tablevalues()[c(1,2,7)]
     })
       })
+  
+    sendemailto = observeEvent(input$Submit, {
+      isolate(emails$df[nrow(emails$df) + 1,] <- c(emailvector = input$emailaddress))
+      return(emails$df)
+    })
+  
+    observeEvent(input$Submit, {
+      output$emaillist <- renderTable({
+        emails$df
+      })
+    })
+    
+    observeEvent(input$Sendemail, {
+      wd = paste("C:/Users/", input$first, ".", input$last, "/Downloads", sep = "")
+      setwd(wd)
+      for(i in 1:length(emails$df$emailvector)){
+        send.mail(from="dusty.s.turner@gmail.com",
+                  to=as.character(emails$df$emailvector[i]),
+                  subject = "from shiny2",
+                  body = "shiny body",
+                  smtp = list(host.name = "smtp.gmail.com", port = 465, user.name = "dusty.s.turner", passwd = "stewardesses", ssl = TRUE),
+                  authenticate = TRUE,
+                  send = TRUE,
+                  attach.files = "Class Populations.csv",
+                  debug = FALSE)
+      }
+    })
+
+  
 
   output$popavg = renderPrint({
    cat("The average population size is:", popaverage())
@@ -133,7 +180,7 @@ server <- function(input, output) {
   
   output$downloadData <- downloadHandler(
     filename = function() {
-      paste("Class Populations", Sys.Date(), ".csv", sep = "_")
+      paste("Class Populations.csv", sep = "_")
     },
     content = function(file) {
       write.csv(tablevalues()[c(1,2,3,4,5,7)], file)
@@ -145,4 +192,3 @@ server <- function(input, output) {
 
 # Run the application 
 shinyApp(ui = ui, server = server, enableBookmarking = "server")
-
