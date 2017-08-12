@@ -1,15 +1,22 @@
-library(shiny)
-# setwd("C:/Users/dusty.turner/Desktop/R Work/mappractice/maps/")
-# source("data/helpers.R")
-library(ggmap)
-library(httr)
-library(purrr)
-library(dplyr)
-library(rvest)
-library(stringr)
+# if (require("shiny")[1]==FALSE) install.packages("shiny")
+# if (require("ggmap")[1]==TRUE) install.packages("ggmap")
+# if (require("httr")[1]==FALSE) install.packages("httr")
+# if (require("purrr")[1]==FALSE) install.packages("purrr")
+# if (require("dplyr")[1]==FALSE) install.packages("dplyr")
+# if (require("rvest")[1]==FALSE) install.packages("rvest")
+# if (require("stringr")[1]==FALSE) install.packages("stringr")
 
-# refrence for tabs
-## https://shiny.rstudio.com/gallery/navbar-example.html
+library("shiny")
+library("ggmap")
+library("httr")
+library("purrr")
+library("dplyr")
+library("rvest")
+library("stringr")
+library("mailR")
+
+
+
 
 map <- get_map(location = 'united states', zoom = 4,
                      # scale = "auto",
@@ -39,11 +46,26 @@ tabPanel("Share",
            sidebarPanel(
              h5(strong("Download City Information to CSV")),
              downloadButton('downloadData', 'Download'),
-             textInput("emailaddress", "What is your email address?", "dusty.turner@usma.edu"),
+             br(),br(),
+             textInput("emailaddress", "What is your email address?", "dusty.s.turner@gmail.com"),
              actionButton("Submit", "Submit"),
-             textInput("first", "firstname", "dusty"),
-             textInput("last", "lastname", "turner"),
-             actionButton("Sendemail", "Send Email")
+             radioButtons("savestyle", "Save to location:",
+                                c("local" = "downloads",
+                                  "network" = "Userdirs")),
+             conditionalPanel(
+               condition = "input.savestyle == 'downloads'",
+               textInput("first", "firstname", "dusty"),
+               textInput("last", "lastname", "turner"),
+               actionButton("Sendemaila", "Send Email")
+               ),
+             conditionalPanel(
+               condition = "input.savestyle == 'Userdirs'",
+              textInput("dirslocation", "USERDIRS Location", "Turner"),
+              actionButton("Sendemailb", "Send Email")
+               ),
+             textInput("subject","subject", "Class Email")
+             # textInput("delete", "delete which", "number")
+
 ),
           
            # Show a plot of the generated distribution
@@ -147,23 +169,44 @@ server <- function(input, output) {
   
     sendemailto = observeEvent(input$Submit, {
       isolate(emails$df[nrow(emails$df) + 1,] <- c(emailvector = input$emailaddress))
+      # isolate(emails$df$emailvector = emails$df$emailvector[-input$delete,])
+      # colnames(emails$df) = c("Cadet_Emails")
       return(emails$df)
     })
   
     observeEvent(input$Submit, {
       output$emaillist <- renderTable({
         emails$df
+        showitdf = emails$df
+        colnames(showitdf) = c("Cadet Emails")
+        return(showitdf)
       })
     })
     
-    observeEvent(input$Sendemail, {
+    observeEvent(input$Sendemaila, {
       wd = paste("C:/Users/", input$first, ".", input$last, "/Downloads", sep = "")
       setwd(wd)
       for(i in 1:length(emails$df$emailvector)){
-        send.mail(from="dusty.s.turner@gmail.com",
+        send.mail(from="dusty.turner@usma.edu",
                   to=as.character(emails$df$emailvector[i]),
-                  subject = "from shiny2",
-                  body = "shiny body",
+                  subject = input$subject,
+                  body = "This is and email from CPT Dusty Turner",
+                  smtp = list(host.name = "smtp.gmail.com", port = 465, user.name = "dusty.s.turner", passwd = "stewardesses", ssl = TRUE),
+                  authenticate = TRUE,
+                  send = TRUE,
+                  attach.files = "Class Populations.csv",
+                  debug = FALSE)
+      }
+    })
+    
+    observeEvent(input$Sendemailb, {
+      wd = paste("//usmaedu/apollo/math/Userdirs/", input$dirslocation, sep = "")
+      setwd(wd)
+      for(i in 1:length(emails$df$emailvector)){
+        send.mail(from="dusty.turner@usma.edu",
+                  to=as.character(emails$df$emailvector[i]),
+                  subject = input$subject,
+                  body = "This is and email from CPT Dusty Turner",
                   smtp = list(host.name = "smtp.gmail.com", port = 465, user.name = "dusty.s.turner", passwd = "stewardesses", ssl = TRUE),
                   authenticate = TRUE,
                   send = TRUE,
@@ -191,4 +234,4 @@ server <- function(input, output) {
 }
 
 # Run the application 
-shinyApp(ui = ui, server = server, enableBookmarking = "server")
+shinyApp(ui = ui, server = server, enableBookmarking = "server", options = list(launch.browser = TRUE))
