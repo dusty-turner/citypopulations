@@ -1,10 +1,11 @@
-# if (require("shiny")[1]==FALSE) install.packages("shiny")
-# if (require("ggmap")[1]==TRUE) install.packages("ggmap")
-# if (require("httr")[1]==FALSE) install.packages("httr")
-# if (require("purrr")[1]==FALSE) install.packages("purrr")
-# if (require("dplyr")[1]==FALSE) install.packages("dplyr")
-# if (require("rvest")[1]==FALSE) install.packages("rvest")
-# if (require("stringr")[1]==FALSE) install.packages("stringr")
+if("shiny" %in% rownames(installed.packages()) == FALSE) {install.packages("shiny")}
+if("ggmap" %in% rownames(installed.packages()) == FALSE) {install.packages("ggmap")}
+if("httr" %in% rownames(installed.packages()) == FALSE) {install.packages("httr")}
+if("purrr" %in% rownames(installed.packages()) == FALSE) {install.packages("purrr")}
+if("dplyr" %in% rownames(installed.packages()) == FALSE) {install.packages("dplyr")}
+if("rvest" %in% rownames(installed.packages()) == FALSE) {install.packages("rvest")}
+if("stringr" %in% rownames(installed.packages()) == FALSE) {install.packages("stringr")}
+if("mailR" %in% rownames(installed.packages()) == FALSE) {install.packages("mailR")}
 
 library("shiny")
 library("ggmap")
@@ -14,9 +15,6 @@ library("dplyr")
 library("rvest")
 library("stringr")
 library("mailR")
-
-
-
 
 map <- get_map(location = 'united states', zoom = 4,
                      # scale = "auto",
