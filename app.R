@@ -26,17 +26,14 @@ ui <- navbarPage("Map Search",
 #   titlePanel("Maps"),
    sidebarLayout(
       sidebarPanel(
-        
           textInput("city", "Type in a City", "Kerrville"),
           textInput("state","Type in a State", "Texas"),
           actionButton("Search", "Search"),
           verbatimTextOutput("popavg"),
           tableOutput("citytable")),
-        
-      
-      
+
       # Show a plot of the generated distribution
-      mainPanel(plotOutput("showmap"), verbatimTextOutput("cityvalidation"))
+      mainPanel(plotOutput("showmap"))
         
    )),
 tabPanel("Share",
@@ -63,15 +60,9 @@ tabPanel("Share",
                ),
              textInput("subject","subject", "Class Email")
              # textInput("delete", "delete which", "number")
-
 ),
-          
-           # Show a plot of the generated distribution
            mainPanel(tableOutput("emaillist"))
-      ))
-
-)
-
+)))
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
@@ -153,7 +144,7 @@ server <- function(input, output) {
     output$showmap = renderPlot({
       ggmap(map) +
         geom_point(data = tablevalues(),
-          aes(x = as.numeric(long), y = as.numeric(lat), colour = 1/Population, alpha = 10, size = 5),
+          aes(x = as.numeric(long), y = as.numeric(lat), colour = log(1/Population), alpha = 10, size = 5),
           shape = 20 ) +
         # scale_colour_gradient(low = "white") 
         theme(legend.position="none") 
